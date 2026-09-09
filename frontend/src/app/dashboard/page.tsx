@@ -22,7 +22,11 @@ import {
   EXPENSE_LEDGER, 
   CUSTOMER_FEEDBACK_FEED, 
   MARKET_SIGNALS, 
-  INITIAL_STRATEGIC_RECOMMENDATIONS 
+  INITIAL_STRATEGIC_RECOMMENDATIONS,
+  VYAPAR_AGENTS,
+  VYAPAR_SKUS,
+  VYAPAR_STORE_DATA,
+  VYAPAR_PITCH_STEPS
 } from '../../lib/mockData';
 import { 
   calculateBusinessHealthScore, 
@@ -38,18 +42,32 @@ import {
   MarketSignal, 
   ChatMessage, 
   StrategicRecommendation,
-  AgentMetadata 
+  AgentMetadata,
+  LanguageMode,
+  SupplierComparisonQuote
 } from '../../lib/types';
+import { VyaparPitchDemoBanner } from '../../components/dashboard/VyaparPitchDemoBanner';
+import { VyaparSupplierModal } from '../../components/dashboard/VyaparSupplierModal';
+import { VyaparCustomerRecoveryModal } from '../../components/dashboard/VyaparCustomerRecoveryModal';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const [storeMode, setStoreMode] = useState<'vyapar' | 'apex'>('vyapar');
   const [activeTab, setActiveTab] = useState('executive');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isLiveSimulating, setIsLiveSimulating] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Pitch Stepper & Voice States
+  const [pitchStepIndex, setPitchStepIndex] = useState(0);
+  const [language, setLanguage] = useState<LanguageMode>('hinglish');
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [activeLoopPhase, setActiveLoopPhase] = useState<'DETECT' | 'DECIDE' | 'ACT' | 'LEARN'>('DETECT');
+
   // Modals & Drawers State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVyaparSupplierModalOpen, setIsVyaparSupplierModalOpen] = useState(false);
+  const [isVyaparRecoveryModalOpen, setIsVyaparRecoveryModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalActionType, setModalActionType] = useState('');
   const [modalPayload, setModalPayload] = useState<Record<string, any>>({});
@@ -57,8 +75,8 @@ export default function DashboardPage() {
   const [inspectingAgent, setInspectingAgent] = useState<AgentMetadata | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Core Dynamic Datasets
-  const [skus, setSkus] = useState<SKUItem[]>(INITIAL_SKUS);
+  // Dynamic Datasets
+  const [skus, setSkus] = useState<SKUItem[]>(VYAPAR_SKUS);
   const [salesHistory, setSalesHistory] = useState<SalesRecord[]>(MONTHLY_SALES_HISTORY);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(EXPENSE_LEDGER);
   const [feedbacks, setFeedbacks] = useState<CustomerFeedback[]>(CUSTOMER_FEEDBACK_FEED);
@@ -66,17 +84,35 @@ export default function DashboardPage() {
   const [dataSources, setDataSources] = useState(INITIAL_DATA_SOURCES);
   const [recommendations, setRecommendations] = useState<StrategicRecommendation[]>(INITIAL_STRATEGIC_RECOMMENDATIONS);
 
-  // Initial Welcome Chat Message Powered by Gemini 3.6 Flash
+  // Active Agents based on store mode
+  const currentAgents = storeMode === 'vyapar' ? VYAPAR_AGENTS : INITIAL_AGENTS;
+
+  // Initial Welcome Chat Message for Vyapar AI
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: 'welcome-1',
+      id: 'vyapar-welcome-1',
       sender: 'coo',
-      finalAnswer: `Welcome to **Apex Mumbai Retail Pvt. Ltd.** executive operations. Your **Virtual AI Management Team powered by Google Gemini 3.6 Flash** is online and grounded in real-time enterprise telemetry across all 6 business channels.\n\n### Current Telemetry Highlights:\n- **Commercial Revenue**: August revenue closed at **₹31,84,000** against ₹41,60,000 target (-23.4%).\n- **Inventory Constraint**: SKU-884 (Monsooned Malabar Arabica) is in critical depletion with only **3 days of stock remaining** (42 units).\n- **Net Operating Margin**: Operating expenses stand at **₹36,56,000** yielding an operating loss of **-₹18,02,912** against ₹11,36,000 cash reserves.\n\nAsk any question below (e.g. *"What is my net profit?"*, *"How can we eliminate shipping overruns?"*, or *"Which supplier should we reorder from?"*) to initiate live Gemini multi-agent reasoning.`,
+      finalAnswer: `### 🌅 Good morning Rajesh ji!
+
+Welcome to **Vyapar AI** — your 24/7 Autonomous AI Business Partner for **Rajesh Hardware & Electricals (Thane West)**.
+
+| Yesterday's Sales | Estimated Net Profit | Outstanding Udhar | Today's Expected Forecast |
+| :--- | :--- | :--- | :--- |
+| **₹48,750** | **₹11,430** (23.4%) | **₹72,500** (3 Customer Accounts) | **₹52,000 – ₹58,000** |
+
+---
+
+### ⚡ 3 Proactive Alerts You Should Know:
+1. **📦 Low Stock Alert**: Your **1-inch PVC conduit pipe** will run out in **3 days** (4 bundles left).
+2. **💸 Overdue Payments**: **Two customers** have overdue payments (**Sharma Construction ₹32,000** & **Sai Electric ₹21,500**).
+3. **📈 Revenue Forecast**: Based on recent Thane construction demand, today's counter revenue is expected between **₹52,000 to ₹58,000**.
+
+*Ask anything below (or speak in Hinglish/Marathi/English), or click through the 5-step Pitch Demo bar above!*`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       suggestedActions: [
-        { label: 'What is my net profit & operating margins?', actionType: 'query', payload: { query: 'What is my net profit and operating margins for August?' } },
-        { label: 'Which products are likely to run out next week?', actionType: 'query', payload: { query: 'Which products are likely to go out of stock next week?' } },
-        { label: 'How can we reduce expenses this month?', actionType: 'query', payload: { query: 'What expenses can be reduced to improve liquidity?' } }
+        { label: 'Haan, low-stock item order kar do', actionType: 'vyapar_supplier_modal', payload: { item: '1-inch PVC Pipe' } },
+        { label: 'Kaunse customers ne payment nahi kiya?', actionType: 'query', payload: { query: 'Kaunse customers ne payment nahi kiya?' } },
+        { label: 'Business improve kaise kar sakte hai?', actionType: 'query', payload: { query: 'Business improve kaise kar sakte hai?' } }
       ]
     }
   ]);
@@ -120,6 +156,80 @@ export default function DashboardPage() {
     }
   };
 
+  const handlePitchStepSelect = (stepIdx: number, promptText: string) => {
+    setPitchStepIndex(stepIdx);
+    if (stepIdx === 0) setActiveLoopPhase('DETECT');
+    else if (stepIdx === 1) setActiveLoopPhase('DECIDE');
+    else if (stepIdx === 2) setActiveLoopPhase('ACT');
+    else if (stepIdx === 3) setActiveLoopPhase('DECIDE');
+    else if (stepIdx === 4) setActiveLoopPhase('DETECT');
+
+    handleSendMessage(promptText);
+  };
+
+  const handleSpeechVoiceReadout = (text?: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis || !text) return;
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*#`_\[\]()|]/g, ' ').replace(/\s+/g, ' ').slice(0, 350);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleSupplierOrderConfirm = (supplier: SupplierComparisonQuote) => {
+    setSkus(prev => prev.map(s => s.id === 'SKU-PVC-1IN' ? { ...s, currentStock: s.currentStock + 50, daysUntilStockout: 41, status: 'optimal' } : s));
+    showToast(`Purchase Order PO-2026-PVC101 created with ${supplier.name} for ₹${supplier.quotedPrice.toLocaleString('en-IN')}. Delivery ${supplier.deliveryTime}.`);
+    setActiveLoopPhase('LEARN');
+
+    const poConfirmationMsg: ChatMessage = {
+      id: `po-${Date.now()}`,
+      sender: 'coo',
+      fileName: 'purchase-order-po-2026-pvc101.md',
+      finalAnswer: `### ✅ Purchase Order PO-2026-PVC101 Created!
+
+- **Vendor**: ${supplier.name} (${supplier.location})
+- **Item**: 1-inch Heavy PVC Conduit Pipe (50 bundles)
+- **Agreed Net Price**: ₹${supplier.quotedPrice.toLocaleString('en-IN')} (Saved ₹${supplier.potentialSaving || 670})
+- **Expected Delivery**: ${supplier.deliveryTime}
+
+Delivery status will be tracked automatically upon shop arrival tomorrow morning.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      keyDataPoints: [
+        { label: 'Vendor', value: supplier.name },
+        { label: 'PO Total', value: `₹${supplier.quotedPrice.toLocaleString('en-IN')}` },
+        { label: 'Delivery', value: supplier.deliveryTime }
+      ]
+    };
+    setMessages(prev => [...prev, poConfirmationMsg]);
+  };
+
+  const handleRecoveryRemindersSent = (sentCount: number, recoveredAmount: number) => {
+    showToast(`WhatsApp payment reminders sent to ${sentCount} trade debtors! Expected recovery ₹${recoveredAmount.toLocaleString('en-IN')}.`);
+    setActiveLoopPhase('LEARN');
+
+    const waConfirmationMsg: ChatMessage = {
+      id: `wa-${Date.now()}`,
+      sender: 'coo',
+      fileName: 'whatsapp-recovery-dispatched.md',
+      finalAnswer: `### 📱 WhatsApp Payment Reminders Dispatched!
+
+- **Recipients**: Sharma Construction (₹32,000), Sai Electric Works (₹21,500), Om Enterprises (₹19,000)
+- **Total Recovery Target**: ₹${recoveredAmount.toLocaleString('en-IN')}
+- **UPI Deep-Link**: Integrated BharatPe dynamic settlement URL
+- **Behavioral Learning**: Sharma Construction historically clears payment within 24 hours of WhatsApp notification.
+
+Incoming bank/UPI settlements will be reconciled against the khata ledger automatically.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      keyDataPoints: [
+        { label: 'Reminders Sent', value: `${sentCount} Accounts` },
+        { label: 'Total Inflow Target', value: `₹${recoveredAmount.toLocaleString('en-IN')}` },
+        { label: 'Expected Today', value: '₹32,000 (Sharma)' }
+      ]
+    };
+    setMessages(prev => [...prev, waConfirmationMsg]);
+  };
+
   const handleActionClick = (actionType: string, payload: any) => {
     if (actionType === 'navigate') {
       if (payload.tab) setActiveTab(payload.tab);
@@ -130,6 +240,33 @@ export default function DashboardPage() {
         handleSendMessage(payload.query);
         setActiveTab('chat');
       }
+      return;
+    }
+    if (actionType === 'vyapar_supplier_modal') {
+      setIsVyaparSupplierModalOpen(true);
+      return;
+    }
+    if (actionType === 'vyapar_reminders' || actionType === 'vyapar_send_reminders') {
+      setIsVyaparRecoveryModalOpen(true);
+      return;
+    }
+    if (actionType === 'vyapar_create_po') {
+      const supplier = payload.supplier || 'Mahesh Traders';
+      const amount = payload.amount || 12450;
+      setSkus(prev => prev.map(s => s.id === 'SKU-PVC-1IN' ? { ...s, currentStock: s.currentStock + 50, daysUntilStockout: 41, status: 'optimal' } : s));
+      showToast(`Purchase Order PO-2026-PVC101 created for ${supplier} (₹${amount.toLocaleString('en-IN')}). Delivery tomorrow morning!`);
+      setActiveLoopPhase('ACT');
+      return;
+    }
+    if (actionType === 'vyapar_reallocate_shelf') {
+      showToast('Floor space reallocated: LED frontage +18%, Pumps to catalog. Projected profit +₹24,000/mo!');
+      setActiveLoopPhase('ACT');
+      return;
+    }
+    if (actionType === 'vyapar_reorder_copper') {
+      setSkus(prev => prev.map(s => s.id === 'SKU-COPPER-25' ? { ...s, currentStock: s.currentStock + 150, daysUntilStockout: 54, status: 'optimal' } : s));
+      showToast('Purchase Order for 150 rolls of Finolex copper wire issued. Protected ₹45,000+ in sales!');
+      setActiveLoopPhase('ACT');
       return;
     }
 
@@ -197,6 +334,10 @@ export default function DashboardPage() {
         targetAgentId
       );
       setMessages(prev => [...prev, response]);
+
+      if (isVoiceEnabled && response.finalAnswer) {
+        handleSpeechVoiceReadout(response.finalAnswer);
+      }
     } catch (err) {
       console.error('Gemini query error:', err);
       showToast('Live Gemini API error. Please verify network connection.');
@@ -247,6 +388,20 @@ export default function DashboardPage() {
         payload={modalPayload}
       />
 
+      {/* Vyapar Supplier Reorder Modal */}
+      <VyaparSupplierModal 
+        isOpen={isVyaparSupplierModalOpen}
+        onClose={() => setIsVyaparSupplierModalOpen(false)}
+        onConfirmOrder={handleSupplierOrderConfirm}
+      />
+
+      {/* Vyapar Customer WhatsApp Recovery Modal */}
+      <VyaparCustomerRecoveryModal 
+        isOpen={isVyaparRecoveryModalOpen}
+        onClose={() => setIsVyaparRecoveryModalOpen(false)}
+        onSendReminders={handleRecoveryRemindersSent}
+      />
+
       {/* Agent Inspector Drawer */}
       <AgentInspectorDrawer 
         agent={inspectingAgent}
@@ -258,7 +413,7 @@ export default function DashboardPage() {
       <Sidebar 
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        agents={INITIAL_AGENTS}
+        agents={currentAgents}
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
         healthScore={healthScore}
@@ -270,18 +425,49 @@ export default function DashboardPage() {
         <Navbar 
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          agents={INITIAL_AGENTS}
+          agents={currentAgents}
           isLiveSimulating={isLiveSimulating}
           setIsLiveSimulating={setIsLiveSimulating}
           healthScore={healthScore}
+          storeMode={storeMode}
+          onToggleStoreMode={(mode) => {
+            setStoreMode(mode);
+            if (mode === 'vyapar') {
+              setSkus(VYAPAR_SKUS);
+            } else {
+              setSkus(INITIAL_SKUS);
+            }
+          }}
           onSignOut={handleSignOut}
           onShowToast={showToast}
         />
 
-        <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-6">
+        <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 space-y-6">
+          {/* Judges Pitch Stepper Banner */}
+          <VyaparPitchDemoBanner 
+            currentStepIndex={pitchStepIndex}
+            onSelectStep={handlePitchStepSelect}
+            language={language}
+            onLanguageChange={(lang) => {
+              setLanguage(lang);
+              showToast(`Language switched to ${lang.toUpperCase()}`);
+            }}
+            isVoiceEnabled={isVoiceEnabled}
+            onToggleVoice={() => {
+              const next = !isVoiceEnabled;
+              setIsVoiceEnabled(next);
+              showToast(next ? 'AI Voice Readout Active' : 'AI Voice Readout Muted');
+            }}
+            onTriggerMic={() => {
+              setActiveTab('chat');
+              showToast('Microphone active. Talk to Vyapar AI in Hinglish/Marathi/English!');
+            }}
+            activeLoopPhase={activeLoopPhase}
+          />
+
           {activeTab === 'executive' && (
             <ExecutiveSummaryView 
-              agents={INITIAL_AGENTS}
+              agents={currentAgents}
               recommendations={recommendations}
               insights={activeInsights}
               skus={skus}
@@ -289,6 +475,7 @@ export default function DashboardPage() {
               expenses={expenses}
               feedbacks={feedbacks}
               healthScore={healthScore}
+              storeMode={storeMode}
               onExecuteAction={handleActionClick}
               onNavigateToTab={(tab) => setActiveTab(tab)}
               onInspectAgent={handleInspectAgent}
@@ -333,8 +520,9 @@ export default function DashboardPage() {
           {activeTab === 'chat' && (
             <MultiAgentChatConsole 
               messages={messages}
-              agents={INITIAL_AGENTS}
+              agents={currentAgents}
               isLoading={isAgentThinking}
+              storeMode={storeMode}
               onSendMessage={handleSendMessage}
               onExecuteAction={handleActionClick}
             />

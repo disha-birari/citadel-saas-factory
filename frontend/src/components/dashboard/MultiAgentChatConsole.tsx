@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Send, 
@@ -10,7 +10,11 @@ import {
   CheckCircle2, 
   Terminal, 
   Layers, 
-  Sliders
+  Sliders,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { ChatMessage, AgentMetadata } from '../../lib/types';
 import { PRESET_EXECUTIVE_QUERIES } from '../../lib/mockData';
@@ -21,6 +25,7 @@ interface MultiAgentChatConsoleProps {
   messages: ChatMessage[];
   agents: AgentMetadata[];
   isLoading?: boolean;
+  storeMode?: 'vyapar' | 'apex';
   onSendMessage: (query: string, targetAgentId?: string | null) => void;
   onExecuteAction: (actionType: string, payload: any) => void;
 }
@@ -29,12 +34,67 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
   messages,
   agents,
   isLoading = false,
+  storeMode = 'vyapar',
   onSendMessage,
   onExecuteAction
 }) => {
   const [inputQuery, setInputQuery] = useState('');
   const [activeAgentSwitch, setActiveAgentSwitch] = useState<string | null>(null);
   const [expandedReasoningMap, setExpandedReasoningMap] = useState<Record<string, boolean>>({});
+  const [isListening, setIsListening] = useState(false);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+
+  const startListening = () => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in your browser. Please type your query in Hinglish, Hindi, or English.');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'hi-IN'; // Handles Hinglish, Hindi, and Indian English
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInputQuery(transcript);
+        }
+      };
+      recognition.start();
+    } catch (e) {
+      setIsListening(false);
+    }
+  };
+
+  const handleSpeak = (msgId: string, text?: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (speakingMsgId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    if (!text) return;
+
+    // Clean markdown characters for audio readout
+    const cleanText = text.replace(/[*#`_\[\]()|]/g, ' ').replace(/\s+/g, ' ').slice(0, 450);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setSpeakingMsgId(null);
+    utterance.onerror = () => setSpeakingMsgId(null);
+
+    setSpeakingMsgId(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const toggleReasoning = (msgId: string) => {
     setExpandedReasoningMap(prev => ({ ...prev, [msgId]: !prev[msgId] }));
@@ -49,6 +109,39 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
 
   const selectedAgentMeta = agents.find(a => a.id === activeAgentSwitch);
 
+  const VYAPAR_PRESETS = [
+    {
+      query: "Good morning. Aaj shop ka status batao.",
+      shortLabel: "Aaj shop ka status batao",
+      badge: "1:20 Morning",
+      subtext: "Yesterday ₹48,750 sales, ₹11,430 profit, ₹72,500 udhar & 3 alerts"
+    },
+    {
+      query: "Haan, low-stock item order kar do.",
+      shortLabel: "Low-stock item order kar do",
+      badge: "1:50 Reorder",
+      subtext: "Compares Mahesh vs Patel vs Shree. Saves ₹670."
+    },
+    {
+      query: "Kaunse customers ne payment nahi kiya?",
+      shortLabel: "Kaunse customers ne payment nahi kiya?",
+      badge: "2:20 Khata",
+      subtext: "Sharma ₹32k, Sai ₹21.5k, Om ₹19k. AI WhatsApp recovery."
+    },
+    {
+      query: "Business improve kaise kar sakte hai?",
+      shortLabel: "Business improve kaise kar sakte hai?",
+      badge: "2:50 Profit",
+      subtext: "LEDs 32% margin on 12% space vs Pumps 8% on 30% space."
+    },
+    {
+      query: "Copper wire stock status batao.",
+      shortLabel: "Copper wire predictive spike",
+      badge: "3:15 Surge",
+      subtext: "Sales +38%, out in 4 days, 150 rolls reorder prevents ₹45k loss."
+    }
+  ];
+
   return (
     <div className="space-y-6">
       {/* Top Banner with Antigravity IDE Multi-Agent Switcher */}
@@ -59,23 +152,25 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
               <Sparkles className="h-5 w-5" />
             </span>
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-800">
-              Autonomous Multi-Agent Discussion & Swarm Intelligence
+              {storeMode === 'vyapar' ? 'Vyapar AI • Voice & Multilingual Swarm' : 'Autonomous Multi-Agent Discussion & Swarm Intelligence'}
             </span>
           </div>
           <h3 className="text-2xl font-extrabold text-stone-900 tracking-tight flex items-center gap-2">
-            <span>Collaborative Multi-Agent Workspace</span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-900 font-mono font-bold border border-indigo-200">
-              IDE Style
+            <span>{storeMode === 'vyapar' ? 'Vyapar AI Business Conversation' : 'Collaborative Multi-Agent Workspace'}</span>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono font-bold border border-amber-200">
+              {storeMode === 'vyapar' ? 'Hinglish • Marathi • English' : 'IDE Style'}
             </span>
           </h3>
           <p className="text-xs text-stone-600">
-            Real-time inter-agent debate and consensus modeling powered by live Gemini 3.7 Flash. Switch active agent focus or let the Swarm auto-orchestrate.
+            {storeMode === 'vyapar' 
+              ? 'Rajesh Bhai simply talks. Vyapar AI understands, predicts, recommends, and acts across Sales, Inventory, Finance, Procurement, CRM, and Employee tasks.'
+              : 'Real-time inter-agent debate and consensus modeling powered by live Gemini. Switch active agent focus or let the Swarm auto-orchestrate.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-mono font-bold shadow-2xs">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
-          <span>Engine: Gemini 3.7 Flash (Live Active)</span>
+          <span>{storeMode === 'vyapar' ? 'Active: Vyapar AI Intelligence Loop' : 'Engine: Gemini (Live Active)'}</span>
         </div>
       </div>
 
@@ -85,11 +180,11 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
           <div className="flex items-center gap-2">
             <Sliders className="h-3.5 w-3.5 text-amber-700" />
             <span className="text-xs font-bold text-stone-800 uppercase font-mono tracking-wider">
-              Target Agent Context Switch:
+              Target Agent Focus:
             </span>
           </div>
           <span className="text-[11px] font-mono text-stone-500">
-            {activeAgentSwitch ? `Focused: ${selectedAgentMeta?.name}` : 'Swarm Mode (Auto-Orchestrated by COO)'}
+            {activeAgentSwitch ? `Focused: ${selectedAgentMeta?.name}` : 'Autonomous Swarm Mode (DETECT → DECIDE → ACT → LEARN)'}
           </span>
         </div>
 
@@ -132,26 +227,30 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
       <div className="space-y-2">
         <span className="text-xs text-stone-600 font-mono flex items-center gap-1.5 font-bold">
           <Sparkles className="h-3.5 w-3.5 text-amber-700" />
-          <span>POPULAR EXECUTIVE DISCUSSIONS:</span>
+          <span>{storeMode === 'vyapar' ? 'VYAPAR PITCH SCRIPT ACTIONS (CLICK TO EXECUTE):' : 'POPULAR EXECUTIVE DISCUSSIONS:'}</span>
         </span>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {PRESET_EXECUTIVE_QUERIES.map((preset, idx) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+          {(storeMode === 'vyapar' ? VYAPAR_PRESETS : PRESET_EXECUTIVE_QUERIES).map((preset: any, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => onSendMessage(preset.query, activeAgentSwitch)}
-              className="glass-card p-3.5 rounded-xl text-left border border-[#e6e4df] hover:border-amber-400 hover:bg-[#faf8f5] transition flex items-start gap-2.5 group shadow-xs"
+              className="glass-card p-3 rounded-xl text-left border border-[#e6e4df] hover:border-amber-400 hover:bg-[#faf8f5] transition flex flex-col justify-between group shadow-xs"
             >
-              <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-800 group-hover:bg-amber-500/20 transition mt-0.5">
-                <ChevronRight className="h-3.5 w-3.5" />
-              </span>
               <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
+                    {preset.badge || `Preset ${idx + 1}`}
+                  </span>
+                  <ChevronRight className="h-3.5 w-3.5 text-stone-400 group-hover:text-amber-700 transition" />
+                </div>
                 <h5 className="text-xs font-bold text-stone-900 group-hover:text-amber-800 transition">
                   {preset.shortLabel}
                 </h5>
-                <p className="text-[11px] text-stone-500 line-clamp-1 italic mt-0.5">
-                  "{preset.query}"
-                </p>
               </div>
+              <p className="text-[11px] text-stone-500 line-clamp-1 italic mt-1 font-mono">
+                {preset.subtext || `"${preset.query}"`}
+              </p>
             </button>
           ))}
         </div>
@@ -192,7 +291,21 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
                       </p>
                     </div>
                   </div>
-                  <span className="text-[10px] text-stone-500 font-mono">{msg.timestamp}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSpeak(msg.id, msg.finalAnswer)}
+                      title={speakingMsgId === msg.id ? "Stop voice reading" : "Read aloud with AI voice"}
+                      className={`p-1.5 rounded-lg border transition ${
+                        speakingMsgId === msg.id 
+                          ? 'bg-amber-500 text-stone-950 border-amber-600 animate-pulse' 
+                          : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
+                      }`}
+                    >
+                      {speakingMsgId === msg.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                    </button>
+                    <span className="text-[10px] text-stone-500 font-mono">{msg.timestamp}</span>
+                  </div>
                 </div>
 
                 {/* Live Inter-Agent Discussion Thread (Antigravity IDE Multi-Turn Style) */}
@@ -403,20 +516,38 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
           <input
             type="text"
             value={inputQuery}
-            disabled={isLoading}
+            disabled={isLoading || isListening}
             onChange={(e) => setInputQuery(e.target.value)}
             placeholder={
-              isLoading 
+              isListening
+                ? "🎙️ Listening... (Speak in Hinglish, Hindi, or English)"
+                : isLoading 
                 ? "Live multi-agent discussion in progress..." 
+                : storeMode === 'vyapar'
+                ? "Rajesh Bhai says (e.g. 'Aaj shop ka status batao', 'Low-stock item order kar do')..."
                 : activeAgentSwitch 
                 ? `Ask ${selectedAgentMeta?.name} (e.g. 'Audit this expense line', 'Predict stockout dates')...`
                 : "Ask your Virtual Management Team (e.g. 'What is my net profit?', 'How can we cut overheads?')..."
             }
-            className="flex-1 bg-white border border-[#e6e4df] focus:border-amber-600 rounded-xl px-4 py-3 text-xs text-stone-900 placeholder-stone-400 focus:outline-none shadow-xs font-medium disabled:opacity-60"
+            className={`flex-1 bg-white border rounded-xl px-4 py-3 text-xs text-stone-900 placeholder-stone-400 focus:outline-none shadow-xs font-medium disabled:opacity-60 transition ${
+              isListening ? 'border-amber-500 ring-2 ring-amber-400/40 bg-amber-50/20' : 'border-[#e6e4df] focus:border-amber-600'
+            }`}
           />
           <button
+            type="button"
+            onClick={startListening}
+            title="Talk in Hinglish / Hindi / English (Voice to Text)"
+            className={`px-3.5 py-3 rounded-xl border flex items-center justify-center transition shadow-xs ${
+              isListening
+                ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-[#e6e4df]'
+            }`}
+          >
+            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-amber-700" />}
+          </button>
+          <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isListening}
             className="px-6 py-3 rounded-xl bg-[#d97757] hover:bg-[#c25e3f] text-white font-bold text-xs flex items-center gap-2 transition shadow-xs disabled:opacity-60"
           >
             <span>{isLoading ? 'Debating...' : 'Submit'}</span>

@@ -20,6 +20,8 @@ interface NavbarProps {
   isLiveSimulating: boolean;
   setIsLiveSimulating: React.Dispatch<React.SetStateAction<boolean>>;
   healthScore: number;
+  storeMode?: 'vyapar' | 'apex';
+  onToggleStoreMode?: (mode: 'vyapar' | 'apex') => void;
   onSignOut?: () => void;
   onShowToast?: (msg: string) => void;
 }
@@ -31,6 +33,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   isLiveSimulating,
   setIsLiveSimulating,
   healthScore,
+  storeMode = 'vyapar',
+  onToggleStoreMode,
   onSignOut,
   onShowToast
 }) => {
@@ -38,13 +42,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const profileRef = useRef<HTMLDivElement>(null);
 
   const tabTitles: Record<string, string> = {
-    executive: 'Executive COO Workspace',
-    sales: 'Sales Intelligence & Revenue Analytics',
-    inventory: 'Supply Chain & Inventory Operations',
-    finance: 'Finance & Liquidity Control',
-    customer: 'Customer Experience & Sentiment NLP',
-    market: 'Market Intelligence & External Signals',
-    chat: 'Multi-Agent Q&A Console',
+    executive: storeMode === 'vyapar' ? 'Vyapar AI Shop Overview' : 'Executive COO Workspace',
+    sales: storeMode === 'vyapar' ? 'Sales & Fast-Moving Items' : 'Sales Intelligence & Revenue Analytics',
+    inventory: storeMode === 'vyapar' ? 'Inventory & Stockout Predictor' : 'Supply Chain & Inventory Operations',
+    finance: storeMode === 'vyapar' ? 'Receivables & Udhar Khata' : 'Finance & Liquidity Control',
+    customer: storeMode === 'vyapar' ? 'Customer Relations & WhatsApp' : 'Customer Experience & Sentiment NLP',
+    market: storeMode === 'vyapar' ? 'Local Supplier Market Quotes' : 'Market Intelligence & External Signals',
+    chat: storeMode === 'vyapar' ? 'Talk to Vyapar AI' : 'Multi-Agent Q&A Console',
     integrations: 'Data Ingestion & Event Simulator'
   };
 
@@ -73,20 +77,44 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-30 bg-[#faf9f6]/90 border-b border-[#e6e4df] backdrop-blur-xl px-4 lg:px-6 py-2.5 flex items-center justify-between gap-4">
-      {/* Breadcrumb Navigation */}
+      {/* Breadcrumb & Enterprise Switcher Navigation */}
       <div className="flex items-center gap-2 text-xs font-mono">
-        <button 
-          onClick={() => {
-            setActiveTab('executive');
-            if (onShowToast) onShowToast('Workspace: Apex Mumbai Retail Pvt. Ltd. (Active)');
-          }}
-          className="flex items-center gap-1.5 text-stone-600 hover:text-stone-900 transition p-1 rounded-lg hover:bg-[#eeebe3]"
-        >
-          <Building2 className="h-3.5 w-3.5 text-amber-700" />
-          <span className="font-bold text-stone-800">Apex Mumbai Retail</span>
-        </button>
-        <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
-        <span className="font-bold text-stone-900 font-sans text-xs">
+        <div className="flex items-center bg-[#f3f2ec] rounded-xl p-1 border border-[#e5e3dc]">
+          <button 
+            type="button"
+            onClick={() => {
+              if (onToggleStoreMode) onToggleStoreMode('vyapar');
+              if (onShowToast) onShowToast('Switched to Vyapar AI (Rajesh Hardware - Thane West)');
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              storeMode === 'vyapar' 
+                ? 'bg-amber-500 text-stone-950 font-black shadow-xs' 
+                : 'text-stone-600 hover:text-stone-950'
+            }`}
+          >
+            <span>व्य</span>
+            <span>Vyapar AI (Thane)</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => {
+              if (onToggleStoreMode) onToggleStoreMode('apex');
+              if (onShowToast) onShowToast('Switched to Apex Mumbai Retail Pvt. Ltd.');
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              storeMode === 'apex' 
+                ? 'bg-stone-900 text-white font-black shadow-xs' 
+                : 'text-stone-600 hover:text-stone-950'
+            }`}
+          >
+            <Building2 className="h-3 w-3" />
+            <span>Apex Retail</span>
+          </button>
+        </div>
+
+        <ChevronRight className="h-3.5 w-3.5 text-stone-400 hidden sm:inline" />
+        <span className="font-bold text-stone-900 font-sans text-xs hidden sm:inline">
           {tabTitles[activeTab] || 'Management Console'}
         </span>
       </div>

@@ -1,5 +1,5 @@
-"""Application configuration via environment variables."""
-
+from typing import Any, Union
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -13,7 +13,6 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./citadel.db"
-
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -29,9 +28,17 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: Union[list[str], str] = ["http://localhost:3000"]
+
+    @field_validator("cors_origins")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()
+

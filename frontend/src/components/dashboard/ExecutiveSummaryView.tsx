@@ -11,7 +11,11 @@ import {
   Layers, 
   Sparkles,
   Sliders,
-  CheckCircle2
+  CheckCircle2,
+  Store,
+  Clock,
+  PackageCheck,
+  AlertCircle
 } from 'lucide-react';
 import { 
   AgentMetadata, 
@@ -23,6 +27,7 @@ import {
   CustomerFeedback 
 } from '../../lib/types';
 import { AgentBadge } from '../ui/AgentBadge';
+import { VyaparShelfSpaceCard } from './VyaparShelfSpaceCard';
 
 interface ExecutiveSummaryViewProps {
   agents: AgentMetadata[];
@@ -33,6 +38,7 @@ interface ExecutiveSummaryViewProps {
   expenses: ExpenseRecord[];
   feedbacks: CustomerFeedback[];
   healthScore: number;
+  storeMode?: 'vyapar' | 'apex';
   onExecuteAction: (actionType: string, payload: any) => void;
   onNavigateToTab: (tab: string) => void;
   onInspectAgent?: (agentId: string) => void;
@@ -47,6 +53,7 @@ export const ExecutiveSummaryView: React.FC<ExecutiveSummaryViewProps> = ({
   expenses,
   feedbacks,
   healthScore,
+  storeMode = 'vyapar',
   onExecuteAction,
   onNavigateToTab,
   onInspectAgent
@@ -66,21 +73,25 @@ export const ExecutiveSummaryView: React.FC<ExecutiveSummaryViewProps> = ({
               <ShieldCheck className="h-5 w-5" />
             </span>
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-800">
-              Executive Decision Console
+              {storeMode === 'vyapar' ? 'Vyapar AI • Autonomous Shop Partner' : 'Executive Decision Console'}
             </span>
           </div>
           <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
-            Virtual Executive Team Operations Overview
+            {storeMode === 'vyapar' 
+              ? 'Rajesh Hardware & Electricals (Thane West) Operations' 
+              : 'Virtual Executive Team Operations Overview'}
           </h2>
           <p className="text-xs text-stone-600 max-w-2xl leading-relaxed">
-            Real-time synthesized operational intelligence across commercial revenue, inventory depletion, cash liquidity, and customer sentiment streams.
+            {storeMode === 'vyapar'
+              ? 'Autonomous intelligence loop (DETECT → DECIDE → ACT → LEARN) monitoring daily sales, supplier rates, khata collections, and stockout risks.'
+              : 'Real-time synthesized operational intelligence across commercial revenue, inventory depletion, cash liquidity, and customer sentiment streams.'}
           </p>
         </div>
 
         {/* Quick Agent Roster */}
         <div className="glass-card p-3.5 rounded-xl border border-[#e6e4df] space-y-2 min-w-[260px] bg-[#f8f7f2]">
           <div className="flex items-center justify-between text-[11px] text-stone-600 font-mono font-bold">
-            <span>VIRTUAL TEAM ROSTER</span>
+            <span>{storeMode === 'vyapar' ? 'BUSINESS AGENTS' : 'VIRTUAL TEAM ROSTER'}</span>
             <span className="text-emerald-700 font-bold">6/6 ONLINE</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -97,89 +108,206 @@ export const ExecutiveSummaryView: React.FC<ExecutiveSummaryViewProps> = ({
         </div>
       </div>
 
+      {/* Proactive Predictive Alert Banner for Vyapar Mode */}
+      {storeMode === 'vyapar' && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-400/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-500 text-stone-950 shrink-0">
+              <Zap className="h-5 w-5 fill-current" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-black text-amber-900 uppercase">
+                  Proactive Predictive Alert
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold">
+                  +38% Velocity Spike
+                </span>
+              </div>
+              <p className="text-xs text-stone-800 font-medium">
+                <strong>Finolex Copper Wire</strong> sales surged by <strong>38% in last 10 days</strong>. Stock exhausts in <strong>4 days</strong>. Order <strong>150 rolls</strong> to prevent <strong>₹45,000+</strong> lost sales.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onExecuteAction('vyapar_reorder_copper', { qty: 150, item: 'Finolex Copper Wire' })}
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition active:scale-95 shrink-0"
+          >
+            <span>Order 150 Rolls</span>
+            <ArrowUpRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Primary Executive KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Health Score */}
-        <div 
-          onClick={() => onInspectAgent ? onInspectAgent('orchestrator') : onNavigateToTab('executive')}
-          className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-emerald-500 transition group"
-          title="Inspect Chief Operating Officer Orchestrator Agent"
-        >
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition">Business Health Score</span>
-            <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-700">
-              <Zap className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-stone-900">{healthScore}</span>
-            <span className="text-xs text-stone-500 font-bold">/ 100</span>
-          </div>
-          <div className="w-full bg-[#e8e6de] rounded-full h-1.5 overflow-hidden">
-            <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${healthScore}%` }}></div>
-          </div>
-          <p className="text-[10px] text-stone-500 font-medium pt-0.5">Click to inspect COO reasoning</p>
-        </div>
+        {storeMode === 'vyapar' ? (
+          <>
+            {/* Yesterday Sales */}
+            <div 
+              onClick={() => onNavigateToTab('sales')}
+              className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-emerald-500 transition group"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition">Yesterday&apos;s Sales</span>
+                <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-700">
+                  <TrendingUp className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold font-mono text-stone-900">₹48,750</span>
+                <span className="text-xs font-bold text-emerald-700 font-mono">+₹11,430 Profit</span>
+              </div>
+              <p className="text-[11px] text-stone-500 font-medium">38 transactions (Cash + UPI)</p>
+            </div>
 
-        {/* Revenue */}
-        <div 
-          onClick={() => onNavigateToTab('sales')}
-          className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-emerald-500 transition group"
-          title="Navigate to Sales Intelligence & Revenue Analytics"
-        >
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition">August Revenue</span>
-            <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-700">
-              <TrendingUp className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-stone-900">
-              ₹{latestSales.revenue.toLocaleString()}
-            </span>
-            <span className="text-xs font-bold text-rose-600 font-mono">-23.4%</span>
-          </div>
-          <p className="text-[11px] text-stone-500 font-medium">Target: ₹{latestSales.target.toLocaleString()}</p>
-        </div>
+            {/* Today Forecast */}
+            <div 
+              onClick={() => onNavigateToTab('sales')}
+              className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-indigo-400 transition group"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition">Today&apos;s Forecast</span>
+                <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-700">
+                  <Clock className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold font-mono text-stone-900">₹52k – ₹58k</span>
+              </div>
+              <p className="text-[11px] text-stone-500 font-medium">Based on recent Thane velocity</p>
+            </div>
 
-        {/* Stockout Risk */}
-        <div 
-          onClick={() => onNavigateToTab('inventory')}
-          className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-amber-400 transition"
-          title="Navigate to Inventory & Supply Chain Operations"
-        >
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-stone-600">Critical Stockout Risk</span>
-            <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-700">
-              <Boxes className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-amber-800">{criticalSkus.length} SKUs</span>
-            <span className="text-xs text-amber-700 font-mono font-bold">&lt; 4 Days</span>
-          </div>
-          <p className="text-[11px] text-stone-500 font-medium">SKU-884 (42 units left)</p>
-        </div>
+            {/* Outstanding Udhar */}
+            <div 
+              onClick={() => onExecuteAction('vyapar_reminders', { total: 72500 })}
+              className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-rose-400 transition group"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition">Outstanding Udhar</span>
+                <span className="p-1.5 rounded-lg bg-rose-500/10 text-rose-700">
+                  <Wallet className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold font-mono text-rose-900">₹72,500</span>
+                <span className="text-xs text-rose-700 font-mono font-bold">3 Accounts</span>
+              </div>
+              <p className="text-[11px] text-stone-500 font-medium">Sharma Const. ₹32k (92% recovery)</p>
+            </div>
 
-        {/* Cash Buffer */}
-        <div 
-          onClick={() => onNavigateToTab('finance')}
-          className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-indigo-400 transition"
-          title="Navigate to Finance & Liquidity Control"
-        >
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold text-stone-600">Net Cash Buffer</span>
-            <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-700">
-              <Wallet className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-stone-900">₹11,36,000</span>
-            <span className="text-xs text-emerald-700 font-mono font-bold">Safe Buffer</span>
-          </div>
-          <p className="text-[11px] text-stone-500 font-medium">Bhiwandi freight overrun (+₹3,12,000)</p>
-        </div>
+            {/* Low Stock Reorder */}
+            <div 
+              onClick={() => onExecuteAction('vyapar_supplier_modal', { item: '1-inch PVC Pipe' })}
+              className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-amber-400 transition group"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition">Critical Low Stock</span>
+                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-700">
+                  <Boxes className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold font-mono text-amber-800">1-inch PVC</span>
+                <span className="text-xs text-rose-700 font-mono font-bold">3 Days Left</span>
+              </div>
+              <p className="text-[11px] text-stone-500 font-medium">Mahesh Traders: ₹12,450 (Save ₹670)</p>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Health Score */}
+            <div 
+              onClick={() => onInspectAgent ? onInspectAgent('orchestrator') : onNavigateToTab('executive')}
+              className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-emerald-500 transition group"
+              title="Inspect Chief Operating Officer Orchestrator Agent"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition">Business Health Score</span>
+                <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-700">
+                  <Zap className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold font-mono text-stone-900">{healthScore}</span>
+                <span className="text-xs text-stone-500 font-bold">/ 100</span>
+              </div>
+              <div className="w-full bg-[#e8e6de] rounded-full h-1.5 overflow-hidden">
+                <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${healthScore}%` }}></div>
+              </div>
+              <p className="text-[10px] text-stone-500 font-medium pt-0.5">Click to inspect COO reasoning</p>
+            </div>
+
+            {/* Revenue */}
+            <div 
+              onClick={() => onNavigateToTab('sales')}
+              className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-emerald-500 transition group"
+              title="Navigate to Sales Intelligence & Revenue Analytics"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-stone-600 group-hover:text-stone-900 transition">August Revenue</span>
+                <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-700">
+                  <TrendingUp className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold font-mono text-stone-900">
+                  ₹{latestSales.revenue.toLocaleString()}
+                </span>
+                <span className="text-xs font-bold text-rose-600 font-mono">-23.4%</span>
+              </div>
+              <p className="text-[11px] text-stone-500 font-medium">Target: ₹{latestSales.target.toLocaleString()}</p>
+            </div>
+
+            {/* Stockout Risk */}
+            <div 
+              onClick={() => onNavigateToTab('inventory')}
+              className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-amber-400 transition"
+              title="Navigate to Inventory & Supply Chain Operations"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-stone-600">Critical Stockout Risk</span>
+                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-700">
+                  <Boxes className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold font-mono text-amber-800">{criticalSkus.length} SKUs</span>
+                <span className="text-xs text-amber-700 font-mono font-bold">&lt; 4 Days</span>
+              </div>
+              <p className="text-[11px] text-stone-500 font-medium">SKU-884 (42 units left)</p>
+            </div>
+
+            {/* Cash Buffer */}
+            <div 
+              onClick={() => onNavigateToTab('finance')}
+              className="glass-card p-5 rounded-2xl border border-[#e6e4df] space-y-2 bg-white shadow-xs cursor-pointer hover:border-indigo-400 transition"
+              title="Navigate to Finance & Liquidity Control"
+            >
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-stone-600">Net Cash Buffer</span>
+                <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-700">
+                  <Wallet className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold font-mono text-stone-900">₹11.36L</span>
+                <span className="text-xs text-stone-500 font-medium">Safe</span>
+              </div>
+              <p className="text-[11px] text-stone-500 font-medium">OpEx Loss: -₹18,02,912</p>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Shelf Space vs Margin Card (Rendered for Vyapar mode) */}
+      {storeMode === 'vyapar' && (
+        <VyaparShelfSpaceCard 
+          onExecuteRecommendation={() => onExecuteAction('vyapar_reallocate_shelf', { profitTarget: 24000 })}
+        />
+      )}
 
       {/* Recommendations & Agent Insights Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

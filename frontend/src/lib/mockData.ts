@@ -391,3 +391,327 @@ export const PRESET_EXECUTIVE_QUERIES = [
     iconName: "MessageCircle"
   }
 ];
+
+// ==============================================================================
+// VYAPAR AI — RAJESH BHAI (THANE HARDWARE & ELECTRICALS) MOCK DATASET
+// ==============================================================================
+
+import { 
+  SupplierComparisonQuote, 
+  CustomerKhataDebtor, 
+  ShelfSpaceMarginMetric, 
+  VyaparBriefingData,
+  ProactiveAlertItem 
+} from './types';
+
+export const VYAPAR_AGENTS: AgentMetadata[] = [
+  {
+    id: 'orchestrator',
+    name: 'Vyapar AI (Decision Manager)',
+    role: '24/7 Autonomous Business Partner',
+    avatar: '⚡',
+    color: 'from-amber-500 to-orange-600',
+    badgeBg: 'bg-amber-500/10 text-amber-700 border-amber-500/30',
+    status: 'active',
+    description: 'Autonomous loop: DETECT → DECIDE → ACT → LEARN. Understands Hinglish, Hindi, Marathi & English.',
+    iconName: 'Sparkles'
+  },
+  {
+    id: 'sales',
+    name: 'Sales Agent',
+    role: 'Revenue & Velocity Intelligence',
+    avatar: '📈',
+    color: 'from-emerald-500 to-teal-600',
+    badgeBg: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30',
+    status: 'active',
+    description: 'Tracks daily cash/UPI sales (₹48,750), today forecast (₹52k-₹58k), and detects copper wire spike (+38%).',
+    iconName: 'TrendingUp'
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory Agent',
+    role: 'Stock-Out Predictor',
+    avatar: '📦',
+    color: 'from-blue-500 to-indigo-600',
+    badgeBg: 'bg-blue-500/10 text-blue-700 border-blue-500/30',
+    status: 'warning',
+    description: 'Predicts stockouts before they happen: 1-inch PVC pipe (3 days left) & Copper wire (4 days left).',
+    iconName: 'Boxes'
+  },
+  {
+    id: 'procurement',
+    name: 'Procurement Agent',
+    role: 'Supplier Rate Negotiator',
+    avatar: '🏷️',
+    color: 'from-purple-500 to-violet-600',
+    badgeBg: 'bg-purple-500/10 text-purple-700 border-purple-500/30',
+    status: 'active',
+    description: 'Compares regular wholesale suppliers (Mahesh vs Patel vs Shree) to maximize purchase margin.',
+    iconName: 'Tags'
+  },
+  {
+    id: 'crm',
+    name: 'CRM & Khata Agent',
+    role: 'Receivables & Cash Recovery Lead',
+    avatar: '👥',
+    color: 'from-rose-500 to-pink-600',
+    badgeBg: 'bg-rose-500/10 text-rose-700 border-rose-500/30',
+    status: 'warning',
+    description: 'Manages ₹72,500 pending udhar, drafts personalized WhatsApp reminders, and scores payment recovery likelihood.',
+    iconName: 'Users'
+  },
+  {
+    id: 'finance',
+    name: 'Finance Agent',
+    role: 'Cash Flow & Profit Analyst',
+    avatar: '💰',
+    color: 'from-amber-600 to-yellow-600',
+    badgeBg: 'bg-amber-600/10 text-amber-800 border-amber-600/30',
+    status: 'active',
+    description: 'Analyzes net daily profit (₹11,430) and 6-month shelf space yield (LEDs 32% margin vs Pumps 8%).',
+    iconName: 'Wallet'
+  }
+];
+
+export const VYAPAR_STORE_DATA: VyaparBriefingData = {
+  enterpriseName: "Rajesh Hardware & Electricals",
+  owner: "Rajesh Bhai",
+  yesterdaySales: 48750,
+  yesterdayProfit: 11430,
+  outstandingPayments: 72500,
+  expectedTodayMin: 52000,
+  expectedTodayMax: 58000,
+  alerts: [
+    {
+      id: "alert-pvc",
+      type: "inventory",
+      message: "Your 1-inch PVC pipe will run out in 3 days.",
+      severity: "critical"
+    },
+    {
+      id: "alert-udhar",
+      type: "finance",
+      message: "Two customers have overdue payments (Sharma Construction ₹32k & Sai Electric ₹21.5k).",
+      severity: "warning"
+    },
+    {
+      id: "alert-forecast",
+      type: "sales",
+      message: "Based on recent trends, today's expected revenue is ₹52,000 to ₹58,000.",
+      severity: "info"
+    }
+  ]
+};
+
+export const VYAPAR_SKUS: SKUItem[] = [
+  {
+    id: 'SKU-PVC-1IN',
+    name: '1-inch Heavy PVC Conduit Pipe (50m Bundle)',
+    category: 'Pipes & Plumbing',
+    price: 320.00,
+    cost: 249.00,
+    currentStock: 4,
+    minStockThreshold: 20,
+    reorderQuantity: 50,
+    dailyDepletionRate: 1.3,
+    daysUntilStockout: 3,
+    status: 'critical',
+    supplier: 'Mahesh Traders',
+    lastRestockDate: '2 weeks ago',
+    workingCapitalLocked: 996
+  },
+  {
+    id: 'SKU-COPPER-25',
+    name: 'Finolex 2.5 sq mm FR Copper Wire (90m Roll)',
+    category: 'Electricals & Wiring',
+    price: 1850.00,
+    cost: 1420.00,
+    currentStock: 12,
+    minStockThreshold: 35,
+    reorderQuantity: 150,
+    dailyDepletionRate: 3.0,
+    daysUntilStockout: 4,
+    status: 'low_stock',
+    supplier: 'Havells / Finolex Dist.',
+    lastRestockDate: '10 days ago',
+    workingCapitalLocked: 17040
+  },
+  {
+    id: 'SKU-LED-BATTEN',
+    name: 'Philips & Havells 20W LED Batten / 9W Bulbs',
+    category: 'Lighting & Fixtures',
+    price: 240.00,
+    cost: 163.20,
+    currentStock: 85,
+    minStockThreshold: 40,
+    reorderQuantity: 100,
+    dailyDepletionRate: 8.5,
+    daysUntilStockout: 10,
+    status: 'optimal',
+    supplier: 'Shree Enterprises',
+    lastRestockDate: '4 days ago',
+    workingCapitalLocked: 13872
+  },
+  {
+    id: 'SKU-WATER-PUMP',
+    name: 'Crompton 1.0 HP Submersible Water Pump',
+    category: 'Heavy Machinery & Motors',
+    price: 10800.00,
+    cost: 9936.00,
+    currentStock: 14,
+    minStockThreshold: 3,
+    reorderQuantity: 5,
+    dailyDepletionRate: 0.1,
+    daysUntilStockout: 140,
+    status: 'dead_stock',
+    supplier: 'Patel Suppliers',
+    lastRestockDate: '3 months ago',
+    workingCapitalLocked: 139104
+  }
+];
+
+export const VYAPAR_SUPPLIERS: SupplierComparisonQuote[] = [
+  {
+    id: 'sup-mahesh',
+    name: 'Mahesh Traders',
+    location: 'Bhiwandi Market',
+    quotedPrice: 12450,
+    deliveryTime: 'Tomorrow morning (10:00 AM)',
+    reliabilityScore: 98,
+    isBestOption: true,
+    potentialSaving: 670
+  },
+  {
+    id: 'sup-patel',
+    name: 'Patel Suppliers',
+    location: 'Kalwa Naka',
+    quotedPrice: 13120,
+    deliveryTime: '2 days',
+    reliabilityScore: 91,
+    isBestOption: false,
+    potentialSaving: 0
+  },
+  {
+    id: 'sup-shree',
+    name: 'Shree Enterprises',
+    location: 'Thane MIDC',
+    quotedPrice: 12980,
+    deliveryTime: 'Tomorrow evening (6:00 PM)',
+    reliabilityScore: 94,
+    isBestOption: false,
+    potentialSaving: 0
+  }
+];
+
+export const VYAPAR_DEBTORS: CustomerKhataDebtor[] = [
+  {
+    id: 'cust-sharma',
+    name: 'Sharma Construction',
+    contactPerson: 'Vinod Sharma',
+    phone: '+91 98201 44521',
+    amount: 32000,
+    daysOverdue: 14,
+    recoveryProbability: 92,
+    behavioralInsight: 'Usually pays within 24 hours of receiving a reminder. High probability of recovery.',
+    whatsappMessage: 'Namaste Vinod ji, Rajesh Hardware Thane se namaskar. Aapka ₹32,000 ka bill 14 dino se pending hai. Kripya UPI/NEFT link se settlement karein: https://pay.vyapar.ai/inv-sharma',
+    status: 'pending'
+  },
+  {
+    id: 'cust-sai',
+    name: 'Sai Electric Works',
+    contactPerson: 'Prakash Salvi',
+    phone: '+91 98192 11984',
+    amount: 21500,
+    daysOverdue: 8,
+    recoveryProbability: 78,
+    behavioralInsight: 'Pays in 2 split installments after reminder.',
+    whatsappMessage: 'Namaste Prakash bhai, Rajesh Hardware se. Aapka ₹21,500 ka ledger balance baki hai. Kripya payment clear karein: https://pay.vyapar.ai/inv-sai',
+    status: 'pending'
+  },
+  {
+    id: 'cust-om',
+    name: 'Om Enterprises',
+    contactPerson: 'Sunil Joshi',
+    phone: '+91 98334 77120',
+    amount: 19000,
+    daysOverdue: 21,
+    recoveryProbability: 65,
+    behavioralInsight: 'Requires WhatsApp reminder followed by evening phone call.',
+    whatsappMessage: 'Respected Sunil ji, Om Enterprises account shows ₹19,000 overdue for 21 days at Rajesh Hardware. Kindly clear today: https://pay.vyapar.ai/inv-om',
+    status: 'pending'
+  }
+];
+
+export const VYAPAR_SHELF_METRICS: ShelfSpaceMarginMetric[] = [
+  {
+    category: 'LED Lighting & Bulbs',
+    profitMarginPct: 32,
+    shelfSpacePct: 12,
+    monthlyTurnover: 78000,
+    verdict: 'High margin, minimal floor space (Top Performer)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300'
+  },
+  {
+    category: 'Submersible Water Pumps',
+    profitMarginPct: 8,
+    shelfSpacePct: 30,
+    monthlyTurnover: 42000,
+    verdict: 'Low margin, blocks 30% of prime shop floor (Dead Space)',
+    badgeColor: 'bg-rose-100 text-rose-800 border-rose-300'
+  }
+];
+
+export const VYAPAR_PROACTIVE_ALERT: ProactiveAlertItem = {
+  id: 'proactive-copper',
+  title: 'Copper Wire Demand Surge (+38%)',
+  item: 'Finolex 2.5 sq mm Copper Wire',
+  metricChange: '+38% velocity in last 10 days',
+  daysLeft: 4,
+  recommendedOrder: '150 rolls',
+  atRiskRevenue: 45000,
+  description: 'At current sales rate, stock will exhaust in 4 days. Reordering 150 rolls now prevents ₹45,000+ in lost sales.'
+};
+
+export const VYAPAR_PITCH_STEPS = [
+  {
+    stepNumber: 1,
+    timestamp: '1:20',
+    title: 'Morning Briefing',
+    hindiPrompt: 'Aaj shop ka status batao.',
+    englishLabel: 'Shop Status Briefing',
+    description: "Yesterday sales ₹48,750, profit ₹11,430, outstanding ₹72,500, and 3 key proactive alerts."
+  },
+  {
+    stepNumber: 2,
+    timestamp: '1:50',
+    title: 'Supplier Compare & PO',
+    hindiPrompt: 'Haan, low-stock item order kar do.',
+    englishLabel: 'Smart Reorder & 3-Quote Compare',
+    description: "Compares Mahesh Traders (₹12,450, best, save ₹670) vs Patel vs Shree, and creates PO."
+  },
+  {
+    stepNumber: 3,
+    timestamp: '2:20',
+    title: 'Cash Recovery (Khata)',
+    hindiPrompt: 'Kaunse customers ne payment nahi kiya?',
+    englishLabel: 'Overdue Khata & WhatsApp AI',
+    description: "Sharma Construction ₹32k, Sai Electric ₹21.5k, Om ₹19k. 1-click WhatsApp recovery."
+  },
+  {
+    stepNumber: 4,
+    timestamp: '2:50',
+    title: 'Profit & Shelf Space',
+    hindiPrompt: 'Business improve kaise kar sakte hai?',
+    englishLabel: 'Shelf Space vs Margin Strategy',
+    description: "LED 32% margin on 12% space vs Pumps 8% on 30% space. +₹18k-24k profit recommendation."
+  },
+  {
+    stepNumber: 5,
+    timestamp: '3:15',
+    title: 'Predictive Surge Alert',
+    hindiPrompt: 'Copper wire stock status batao.',
+    englishLabel: 'Proactive Demand Spike (+38%)',
+    description: "Copper wire surge +38%, out in 4 days, 150 rolls reorder to save ₹45,000+ at-risk sales."
+  }
+];
+

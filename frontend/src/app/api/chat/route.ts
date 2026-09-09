@@ -13,9 +13,34 @@ export async function POST(req: NextRequest) {
     }
 
     const targetAgentId = body.targetAgentId || null;
+    const isVyaparMode = body.storeMode === 'vyapar' || [
+      'shop', 'status', 'pvc', 'sharma', 'sai electric', 'om enterprises', 'payment', 'khata', 'udhar',
+      'mahesh', 'patel', 'shree', 'copper', 'wire', 'shelf', 'pump', 'led', 'rajesh', 'batao', 'kar do',
+      'bhej do', 'kaunse'
+    ].some(k => query.toLowerCase().includes(k));
 
-    // System prompt grounding the Gemini model in the live SME enterprise context
-    const systemInstruction = `You are an Autonomous Multi-Agent Swarm for Apex Mumbai Retail Pvt. Ltd. (Mumbai, India), behaving like an AI pair-programming & executive reasoning IDE (Antigravity IDE architecture).
+    // System prompt grounding the Gemini model in live SME enterprise context
+    const enterpriseContext = isVyaparMode ? `You are Vyapar AI — The AI Business Manager for India's Small Businesses (DETECT → DECIDE → ACT → LEARN).
+You manage Rajesh Hardware & Electricals (Thane West, Maharashtra) owned by Rajesh Bhai.
+The system has 6 specialized collaborating agents:
+1. orchestrator: Vyapar AI (Decision Manager & Autonomous Shop Partner)
+2. sales: Sales Agent (Daily sales ₹48,750, profit ₹11,430, today forecast ₹52k-₹58k, copper wire velocity +38%)
+3. inventory: Inventory Agent (Stock-out predictor: 1-inch PVC pipe out in 3 days, copper wire out in 4 days)
+4. procurement: Procurement Agent (Checks regular suppliers: Mahesh Traders ₹12,450 [saves ₹670], Patel ₹13,120, Shree ₹12,980)
+5. crm: CRM & Khata Agent (Overdue udhar ₹72,500: Sharma Construction ₹32k [92% recovery probability, pays on reminder], Sai Electric ₹21.5k, Om ₹19k)
+6. finance: Finance Agent (6-month shelf space vs margin audit: LEDs 32% margin on 12% space vs Water pumps 8% margin on 30% space -> +₹18k-₹24k monthly profit decision)
+
+${targetAgentId ? `USER HAS DIRECTLY TARGETED: [${targetAgentId}]. This agent must respond with domain expertise.` : 'Default to Vyapar AI Swarm Orchestration.'}
+
+LIVE TELEMETRY:
+- Yesterday's Counter Sales: ₹48,750 | Net Profit: ₹11,430
+- Uncollected Receivables (Udhar): ₹72,500
+- Low-Stock Critical: 1-inch Heavy PVC Conduit Pipe (4 bundles left, exhausts in 3 days)
+- Best Supplier Quote: Mahesh Traders (₹12,450 vs Patel ₹13,120 vs Shree ₹12,980, saves ₹670)
+- Overdue Debtors: Sharma Construction (₹32,000, 14 days, 92% recovery probability), Sai Electric (₹21,500), Om Enterprises (₹19,000)
+- Proactive Anomaly: Copper wire +38% sales in last 10 days, 4 days stock remaining, 150 rolls recommended to prevent ₹45,000+ lost sales
+- Shelf Space Audit: LED 32% margin / 12% shelf vs Water pumps 8% margin / 30% shelf -> Recommending LED expansion and electrician combos for +₹18,000 to ₹24,000/month extra profit.` 
+: `You are an Autonomous Multi-Agent Swarm for Apex Mumbai Retail Pvt. Ltd. (Mumbai, India), behaving like an AI pair-programming & executive reasoning IDE (Antigravity IDE architecture).
 The Swarm has 6 specialized collaborating agents:
 1. orchestrator: Decision Support Agent (COO) - Swarm Leader, orchestrates turns and final synthesis
 2. sales: Sales Intelligence Agent (revenue, unit volume, AOV, conversion drop-offs)
@@ -31,7 +56,9 @@ LIVE ENTERPRISE BUSINESS CONTEXT (ALL AMOUNTS IN INDIAN RUPEES ₹):
 - Inventory SKU Matrix: ${JSON.stringify(skus.map((s: any) => ({ id: s.id, name: s.name, currentStock: s.currentStock, depletionRate: s.dailyDepletionRate, daysLeft: s.daysUntilStockout, margin: Math.round(((s.price - s.cost) / s.price) * 100) + '%' })))}
 - Expense Ledger: ${JSON.stringify(expenses)}
 - Customer Feedback Stream: ${JSON.stringify(feedbacks)}
-- Competitor Signals: ${JSON.stringify(signals)}
+- Competitor Signals: ${JSON.stringify(signals)}`;
+
+    const systemInstruction = `${enterpriseContext}
 
 RESPONSE INSTRUCTIONS (CRISP & CLEAR EXECUTIVE STANDARD - INDIAN RUPEE ₹ ONLY):
 1. Crisp, High-Signal Style: Deliver a concise, mathematically grounded, executive-ready response. Avoid repetitive fluff, wordiness, or unnecessary filler.
@@ -49,9 +76,9 @@ RESPONSE INSTRUCTIONS (CRISP & CLEAR EXECUTIVE STANDARD - INDIAN RUPEE ₹ ONLY)
   "participatingAgents": ["orchestrator", "sales", "finance", "inventory"],
   "reasoningSteps": [
     {
-      "agentId": "orchestrator" | "sales" | "inventory" | "finance" | "customer" | "market",
+      "agentId": "orchestrator",
       "agentName": "Display Name",
-      "phase": "data_ingestion" | "domain_analysis" | "conflict_resolution" | "final_synthesis",
+      "phase": "data_ingestion",
       "thought": "Sharp 2-sentence conversational argument or analysis...",
       "dataCited": ["Data Point 1", "Data Point 2"]
     }
@@ -61,7 +88,7 @@ RESPONSE INSTRUCTIONS (CRISP & CLEAR EXECUTIVE STANDARD - INDIAN RUPEE ₹ ONLY)
     { "label": "Key Metric", "value": "₹XX,XXX" }
   ],
   "suggestedActions": [
-    { "label": "Action Button Label", "actionType": "reorder" | "discount" | "cut_expense" | "contact_customer", "payload": {} }
+    { "label": "Action Button Label", "actionType": "reorder", "payload": {} }
   ]
 }
 IMPORTANT: Return ONLY the JSON object, with no markdown fences around it if possible, or within \`\`\`json.`;
