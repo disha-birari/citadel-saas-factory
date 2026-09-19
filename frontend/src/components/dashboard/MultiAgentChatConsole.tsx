@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Send, 
@@ -7,45 +7,93 @@ import {
   ArrowUpRight, 
   ShieldCheck, 
   Terminal, 
-  Users,
-  MessageSquare,
-  UserCheck
+  Layers, 
+  Sliders,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  CheckCircle2
 } from 'lucide-react';
 import { ChatMessage, AgentMetadata } from '../../lib/types';
 import { PRESET_EXECUTIVE_QUERIES } from '../../lib/mockData';
 import { AgentBadge } from '../ui/AgentBadge';
+import { MarkdownPreview } from '../ui/MarkdownPreview';
 
 interface MultiAgentChatConsoleProps {
   messages: ChatMessage[];
   agents: AgentMetadata[];
-  onSendMessage: (query: string) => void;
+  isLoading?: boolean;
+  storeMode?: 'vyapar' | 'apex';
+  onSendMessage: (query: string, targetAgentId?: string | null) => void;
   onExecuteAction: (actionType: string, payload: any) => void;
 }
 
 export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
   messages,
   agents,
+  isLoading = false,
+  storeMode = 'vyapar',
   onSendMessage,
   onExecuteAction
 }) => {
   const [inputQuery, setInputQuery] = useState('');
-  const [selectedBoss, setSelectedBoss] = useState<string>('all');
+  const [activeAgentSwitch, setActiveAgentSwitch] = useState<string | null>(null);
   const [expandedReasoningMap, setExpandedReasoningMap] = useState<Record<string, boolean>>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const startListening = () => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in your browser. Please type your query in Hinglish, Hindi, or English.');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'hi-IN'; // Handles Hinglish, Hindi, and Indian English
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInputQuery(transcript);
+        }
+      };
+      recognition.start();
+    } catch (e) {
+      setIsListening(false);
+    }
   };
 
-  useEffect(() => {
-    scrollToBottom();
-    if (messages.length > 0) {
-      const latestMsg = messages[messages.length - 1];
-      if (latestMsg.reasoningSteps && latestMsg.reasoningSteps.length > 0) {
-        setExpandedReasoningMap(prev => ({ ...prev, [latestMsg.id]: true }));
-      }
+  const handleSpeak = (msgId: string, text?: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (speakingMsgId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgId(null);
+      return;
     }
-  }, [messages]);
+
+    window.speechSynthesis.cancel();
+    if (!text) return;
+
+    // Clean markdown characters for audio readout
+    const cleanText = text.replace(/[*#`_\[\]()|]/g, ' ').replace(/\s+/g, ' ').slice(0, 450);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setSpeakingMsgId(null);
+    utterance.onerror = () => setSpeakingMsgId(null);
+
+    setSpeakingMsgId(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const toggleReasoning = (msgId: string) => {
     setExpandedReasoningMap(prev => ({ ...prev, [msgId]: !prev[msgId] }));
@@ -53,58 +101,124 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputQuery.trim()) return;
-
-    let finalQuery = inputQuery.trim();
-    if (selectedBoss !== 'all') {
-      const targetAgent = agents.find(a => a.id === selectedBoss);
-      if (targetAgent && targetAgent.bossName) {
-        finalQuery = `[Direct to ${targetAgent.bossName} (${targetAgent.bossTitle})]: ${finalQuery}`;
-      }
-    }
-
-    onSendMessage(finalQuery);
+    if (!inputQuery.trim() || isLoading) return;
+    onSendMessage(inputQuery.trim(), activeAgentSwitch);
     setInputQuery('');
   };
 
-  const currentTargetBoss = agents.find(a => a.id === selectedBoss);
+  const selectedAgentMeta = agents.find(a => a.id === activeAgentSwitch);
+
+  const VYAPAR_PRESETS = [
+    {
+      query: "Good morning. Aaj shop ka status batao.",
+      shortLabel: "Aaj shop ka status batao",
+      badge: "1:20 Morning",
+      subtext: "Yesterday ₹48,750 sales, ₹11,430 profit, ₹72,500 udhar & 3 alerts"
+    },
+    {
+      query: "Haan, low-stock item order kar do.",
+      shortLabel: "Low-stock item order kar do",
+      badge: "1:50 Reorder",
+      subtext: "Compares Mahesh vs Patel vs Shree. Saves ₹670."
+    },
+    {
+      query: "Kaunse customers ne payment nahi kiya?",
+      shortLabel: "Kaunse customers ne payment nahi kiya?",
+      badge: "2:20 Khata",
+      subtext: "Sharma ₹32k, Sai ₹21.5k, Om ₹19k. AI WhatsApp recovery."
+    },
+    {
+      query: "Business improve kaise kar sakte hai?",
+      shortLabel: "Business improve kaise kar sakte hai?",
+      badge: "2:50 Profit",
+      subtext: "LEDs 32% margin on 12% space vs Pumps 8% on 30% space."
+    },
+    {
+      query: "Copper wire stock status batao.",
+      shortLabel: "Copper wire predictive spike",
+      badge: "3:15 Surge",
+      subtext: "Sales +38%, out in 4 days, 150 rolls reorder prevents ₹45k loss."
+    }
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Boss Selector */}
+      {/* Top Banner */}
       <div className="glass-card p-6 rounded-2xl border border-[#e6e4df] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white shadow-xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="p-2 rounded-xl bg-amber-500/10 text-amber-800 border border-amber-500/20">
-              <Users className="h-5 w-5" />
+              <Sparkles className="h-5 w-5" />
             </span>
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-800">
-              Real-Time C-Suite Executive Discussion Suite
+              {storeMode === 'vyapar' ? 'Vyapar AI • Voice & Multilingual Swarm' : 'Autonomous Multi-Agent Discussion & Swarm Intelligence'}
             </span>
           </div>
-          <h3 className="text-2xl font-extrabold text-stone-900 tracking-tight">
-            Conversational Executive Boardroom
+          <h3 className="text-2xl font-extrabold text-stone-900 tracking-tight flex items-center gap-2">
+            <span>{storeMode === 'vyapar' ? 'Vyapar AI Business Conversation' : 'Collaborative Multi-Agent Workspace'}</span>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono font-bold border border-amber-200">
+              {storeMode === 'vyapar' ? 'Hinglish • Marathi • English' : 'IDE Style'}
+            </span>
           </h3>
           <p className="text-xs text-stone-600">
-            Converse directly with named executive bosses (Arthur, Sarah, Marcus, Victor, Elena, David) for honest real-time business reviews.
+            {storeMode === 'vyapar' 
+              ? 'Rajesh Bhai simply talks. Vyapar AI understands, predicts, recommends, and acts across Sales, Inventory, Finance, Procurement, CRM, and Employee tasks.'
+              : 'Real-time inter-agent debate and consensus modeling powered by live Gemini. Switch active agent focus or let the Swarm auto-orchestrate.'}
           </p>
         </div>
 
-        {/* Executive Boss Discussion Selector */}
-        <div className="flex items-center gap-2 bg-[#f8f7f2] p-2 rounded-xl border border-[#e5e3dc]">
-          <span className="text-[11px] font-mono text-stone-600 font-bold hidden sm:inline pl-1">SPEAK WITH:</span>
-          <select
-            value={selectedBoss}
-            onChange={(e) => setSelectedBoss(e.target.value)}
-            className="bg-white border border-[#e6e4df] text-xs font-bold text-stone-900 rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-600 shadow-xs cursor-pointer"
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-mono font-bold shadow-2xs">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
+          <span>{storeMode === 'vyapar' ? 'Active: Vyapar AI Intelligence Loop' : 'Engine: Gemini (Live Active)'}</span>
+        </div>
+      </div>
+
+      {/* Antigravity-Style Agent Switcher Bar */}
+      <div className="glass-card p-3.5 rounded-2xl border border-[#e6e4df] bg-[#faf9f5] space-y-2 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sliders className="h-3.5 w-3.5 text-amber-700" />
+            <span className="text-xs font-bold text-stone-800 uppercase font-mono tracking-wider">
+              Target Agent Focus:
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-stone-500">
+            {activeAgentSwitch ? `Focused: ${selectedAgentMeta?.name}` : 'Autonomous Swarm Mode (DETECT → DECIDE → ACT → LEARN)'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+          <button
+            type="button"
+            onClick={() => setActiveAgentSwitch(null)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition flex items-center gap-1.5 flex-shrink-0 ${
+              activeAgentSwitch === null
+                ? 'bg-amber-700 text-white shadow-xs'
+                : 'bg-white text-stone-700 border border-[#e5e3dc] hover:bg-[#f2f0e8]'
+            }`}
           >
-            <option value="all">👥 Full Executive Roundtable (All 6 Bosses)</option>
-            {agents.map((agent) => (
-              <option key={agent.id} value={agent.id}>
-                {agent.avatar} {agent.bossName || agent.name} ({agent.bossTitle || agent.role})
-              </option>
-            ))}
-          </select>
+            <span>⚡ Swarm (All Agents)</span>
+          </button>
+
+          {agents.map((ag) => {
+            const isSelected = activeAgentSwitch === ag.id;
+            return (
+              <button
+                key={ag.id}
+                type="button"
+                onClick={() => setActiveAgentSwitch(isSelected ? null : ag.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition flex items-center gap-1.5 flex-shrink-0 ${
+                  isSelected
+                    ? 'bg-stone-900 text-white shadow-xs ring-2 ring-amber-500/50'
+                    : 'bg-white text-stone-700 border border-[#e5e3dc] hover:bg-[#f2f0e8]'
+                }`}
+              >
+                <span>{ag.avatar}</span>
+                <span>{ag.name.split(' ')[0]}</span>
+                <span className="text-[10px] opacity-70">[{ag.id}]</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -112,26 +226,30 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
       <div className="space-y-2">
         <span className="text-xs text-stone-600 font-mono flex items-center gap-1.5 font-bold">
           <Sparkles className="h-3.5 w-3.5 text-amber-700" />
-          <span>SUGGESTED EXECUTIVE ROUNDTABLE TOPICS:</span>
+          <span>{storeMode === 'vyapar' ? 'VYAPAR PITCH SCRIPT ACTIONS (CLICK TO EXECUTE):' : 'POPULAR EXECUTIVE DISCUSSIONS:'}</span>
         </span>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {PRESET_EXECUTIVE_QUERIES.map((preset, idx) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+          {(storeMode === 'vyapar' ? VYAPAR_PRESETS : PRESET_EXECUTIVE_QUERIES).map((preset: any, idx) => (
             <button
               key={idx}
-              onClick={() => onSendMessage(preset.query)}
-              className="glass-card p-3.5 rounded-xl text-left border border-[#e6e4df] hover:border-amber-400 hover:bg-[#faf8f5] transition flex items-start gap-2.5 group shadow-xs"
+              type="button"
+              onClick={() => onSendMessage(preset.query, activeAgentSwitch)}
+              className="glass-card p-3 rounded-xl text-left border border-[#e6e4df] hover:border-amber-400 hover:bg-[#faf8f5] transition flex flex-col justify-between group shadow-xs"
             >
-              <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-800 group-hover:bg-amber-500/20 transition mt-0.5">
-                <ChevronRight className="h-3.5 w-3.5" />
-              </span>
               <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
+                    {preset.badge || `Preset ${idx + 1}`}
+                  </span>
+                  <ChevronRight className="h-3.5 w-3.5 text-stone-400 group-hover:text-amber-700 transition" />
+                </div>
                 <h5 className="text-xs font-bold text-stone-900 group-hover:text-amber-800 transition">
                   {preset.shortLabel}
                 </h5>
-                <p className="text-[11px] text-stone-500 line-clamp-1 italic mt-0.5">
-                  "{preset.query}"
-                </p>
               </div>
+              <p className="text-[11px] text-stone-500 line-clamp-1 italic mt-1 font-mono">
+                {preset.subtext || `"${preset.query}"`}
+              </p>
             </button>
           ))}
         </div>
@@ -140,7 +258,7 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
       {/* Messages Stream Container */}
       <div className="glass-card rounded-2xl border border-[#e6e4df] p-4 space-y-6 max-h-[640px] overflow-y-auto bg-white shadow-xs">
         {messages.map((msg) => {
-          const isReasoningExpanded = !!expandedReasoningMap[msg.id];
+          const isReasoningExpanded = expandedReasoningMap[msg.id] !== false;
           return (
             <div key={msg.id} className="space-y-4">
               {/* User Query Bubble */}
@@ -152,7 +270,7 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
                 </div>
               )}
 
-              {/* Multi-Agent Executive Answer Card */}
+              {/* Multi-Agent Live Discussion Thread */}
               <div className="glass-card p-5 rounded-2xl border border-[#e6e4df] bg-white space-y-4 shadow-xs">
                 {/* Boardroom Header */}
                 <div className="flex items-center justify-between border-b border-[#e6e4df] pb-3">
@@ -161,54 +279,123 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
                       👔
                     </div>
                     <div>
-                      <h4 className="text-xs font-extrabold text-stone-900">
-                        Arthur Pendelton (COO) & Executive Boardroom
+                      <h4 className="text-xs font-extrabold text-stone-900 flex items-center gap-2">
+                        <span>Decision Support Agent (COO)</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-mono font-bold">
+                          Multi-Agent Swarm Consensus
+                        </span>
                       </h4>
-                      <p className="text-[10px] text-stone-500 font-mono">Live Natural Discussion & Honest Review</p>
+                      <p className="text-[10px] text-stone-500 font-mono">
+                        Participating: {msg.participatingAgents?.join(', ') || 'orchestrator, sales, finance'}
+                      </p>
                     </div>
                   </div>
-                  <span className="text-[10px] text-stone-500 font-mono">{msg.timestamp}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSpeak(msg.id, msg.finalAnswer)}
+                      title={speakingMsgId === msg.id ? "Stop voice reading" : "Read aloud with AI voice"}
+                      className={`p-1.5 rounded-lg border transition ${
+                        speakingMsgId === msg.id 
+                          ? 'bg-amber-500 text-stone-950 border-amber-600 animate-pulse' 
+                          : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
+                      }`}
+                    >
+                      {speakingMsgId === msg.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                    </button>
+                    <span className="text-[10px] text-stone-500 font-mono">{msg.timestamp}</span>
+                  </div>
                 </div>
 
-                {/* Live Conversational Dialogue Accordion */}
+                {/* Live Inter-Agent Discussion Thread */}
                 {msg.reasoningSteps && msg.reasoningSteps.length > 0 && (
-                  <div className="rounded-xl border border-[#e5e3dc] bg-[#f8f7f2] overflow-hidden">
+                  <div className="rounded-xl border border-[#e5e3dc] bg-[#fbfaf6] overflow-hidden shadow-2xs">
                     <button
                       onClick={() => toggleReasoning(msg.id)}
-                      className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-mono text-stone-800 hover:bg-[#eeebe3] transition"
+                      className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-mono text-stone-800 bg-[#f4f2ea] hover:bg-[#edeae0] transition border-b border-[#e5e3dc]"
                     >
                       <div className="flex items-center gap-2">
                         <Terminal className="h-3.5 w-3.5 text-amber-700" />
-                        <span className="font-bold text-amber-900">
-                          {isReasoningExpanded ? 'Hide Live Executive Boardroom Conversation' : 'View Live Executive Boardroom Conversation'}
+                        <span className="font-bold text-amber-950">
+                          LIVE MULTI-AGENT DISCUSSION & REASONING CHAIN
                         </span>
-                        <span className="text-[10px] text-stone-500">({msg.reasoningSteps.length} executive turns)</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-900 font-bold">
+                          {msg.reasoningSteps.length} agent turns
+                        </span>
                       </div>
-                      {isReasoningExpanded ? <ChevronDown className="h-4 w-4 text-stone-600" /> : <ChevronRight className="h-4 w-4 text-stone-600" />}
+                      <div className="flex items-center gap-1 text-[11px] text-stone-500 font-mono">
+                        <span>{isReasoningExpanded ? 'Collapse debate' : 'Expand debate'}</span>
+                        {isReasoningExpanded ? <ChevronDown className="h-4 w-4 text-stone-600" /> : <ChevronRight className="h-4 w-4 text-stone-600" />}
+                      </div>
                     </button>
 
                     {isReasoningExpanded && (
-                      <div className="p-4 border-t border-[#e5e3dc] space-y-3 bg-[#f3f2ec] animate-slideDown">
-                        <div className="space-y-3.5 relative border-l border-amber-500/30 pl-4 ml-2">
+                      <div className="p-4 space-y-3 bg-[#faf9f5]">
+                        <div className="space-y-3.5">
                           {msg.reasoningSteps.map((step, sIdx) => {
-                            const agent = agents.find(a => a.id === step.agentId);
-                            const avatar = agent ? agent.avatar : '👤';
-                            const bossTitle = agent ? (agent.bossTitle || agent.role) : 'Executive';
+                            const agent = agents.find(a => a.id === step.agentId) || {
+                              id: step.agentId,
+                              name: step.agentName || 'Agent',
+                              role: 'Specialist',
+                              avatar: '🤖',
+                              color: 'text-stone-800',
+                              badgeBg: 'bg-stone-100 text-stone-800',
+                              status: 'active'
+                            };
+
+                            const isCOO = step.agentId === 'orchestrator';
+                            const isSynthesis = step.phase === 'final_synthesis';
+
                             return (
-                              <div key={sIdx} className="space-y-1 relative">
-                                <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-amber-600 ring-4 ring-[#f3f2ec]"></span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-base">{avatar}</span>
-                                  <span className="text-xs font-extrabold text-stone-900">
-                                    {step.agentName}
-                                  </span>
-                                  <span className="text-[10px] text-stone-500 font-mono">
-                                    ({bossTitle})
-                                  </span>
+                              <div 
+                                key={sIdx} 
+                                className={`p-3.5 rounded-xl border transition-all ${
+                                  isSynthesis 
+                                    ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-400/30'
+                                    : isCOO
+                                    ? 'bg-white border-[#e6e4df]'
+                                    : 'bg-[#f5f4ed] border-[#e2dfd5]'
+                                } shadow-2xs`}
+                              >
+                                <div className="flex items-center justify-between pb-2 border-b border-stone-200/60">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-base">{agent.avatar}</span>
+                                    <div>
+                                      <span className="text-xs font-bold text-stone-900">{step.agentName || agent.name}</span>
+                                      <span className="text-[10px] font-mono text-stone-500 ml-2 uppercase font-semibold">
+                                        [{step.phase.replace('_', ' ')}]
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-stone-700 border border-[#e5e3dc]">
+                                      Turn #{sIdx + 1}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="p-3 rounded-xl bg-white border border-[#e5e3dc] text-xs text-stone-800 leading-relaxed font-sans font-medium shadow-xs">
-                                  "{step.thought}"
+
+                                <div className="pt-2">
+                                  <MarkdownPreview 
+                                    content={step.thought} 
+                                    showToggle={false} 
+                                    defaultMode="preview"
+                                    className="!border-0 !bg-transparent !p-0 shadow-none text-xs"
+                                  />
                                 </div>
+
+                                {step.dataCited && step.dataCited.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 pt-2 mt-2 border-t border-stone-200/60">
+                                    <span className="text-[10px] font-mono text-stone-500 font-bold uppercase mr-1">
+                                      Telemetry Cited:
+                                    </span>
+                                    {step.dataCited.map((cite, cIdx) => (
+                                      <span key={cIdx} className="px-2 py-0.5 rounded-md bg-white border border-[#e2dfd5] text-[10px] font-mono text-stone-700 font-bold">
+                                        {cite}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -218,10 +405,21 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
                   </div>
                 )}
 
-                {/* Final Synthesized Honest Review */}
+                {/* Final Synthesized Consensus Answer */}
                 {msg.finalAnswer && (
-                  <div className="text-xs text-stone-800 leading-relaxed whitespace-pre-line font-sans font-medium p-4 rounded-xl bg-[#faf9f6] border border-[#e6e4df]">
-                    {msg.finalAnswer}
+                  <div className="pt-2">
+                    <div className="flex items-center gap-2 mb-2 pb-1 border-b border-[#e6e4df]">
+                      <span className="text-xs font-bold uppercase font-mono text-amber-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <span>Swarm Consensus & Synthesized Executive Statement:</span>
+                      </span>
+                    </div>
+                    <MarkdownPreview 
+                      content={msg.finalAnswer} 
+                      showToggle={true}
+                      defaultMode="preview"
+                      fileName={msg.fileName || (msg.queryText ? `${msg.queryText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32)}.md` : 'executive-decision.md')}
+                    />
                   </div>
                 )}
 
@@ -243,7 +441,13 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
                     {msg.suggestedActions.map((act, aIdx) => (
                       <button
                         key={aIdx}
-                        onClick={() => onExecuteAction(act.actionType, act.payload)}
+                        onClick={() => {
+                          if (act.actionType === 'query' && act.payload?.query) {
+                            onSendMessage(act.payload.query, activeAgentSwitch);
+                          } else {
+                            onExecuteAction(act.actionType, act.payload);
+                          }
+                        }}
                         className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#d97757] hover:bg-[#c25e3f] text-white transition shadow-xs"
                       >
                         <span>{act.label}</span>
@@ -256,30 +460,99 @@ export const MultiAgentChatConsole: React.FC<MultiAgentChatConsoleProps> = ({
             </div>
           );
         })}
-        <div ref={messagesEndRef} />
+
+        {/* Live Thinking Indicator */}
+        {isLoading && (
+          <div className="flex gap-3.5 p-4 rounded-2xl bg-white border border-amber-500/30 shadow-xs animate-pulse">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-600 to-amber-700 flex items-center justify-center text-white shadow-2xs flex-shrink-0">
+              <Sparkles className="h-5 w-5 animate-spin" style={{ animationDuration: '3s' }} />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-amber-900">
+                  Live Multi-Agent Discussion Active
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold">
+                  {activeAgentSwitch ? `AGENT [${activeAgentSwitch.toUpperCase()}] DEBATING WITH SWARM` : 'SWARM REASONING OVER TELEMETRY...'}
+                </span>
+              </div>
+              <div className="space-y-1.5 text-xs text-stone-600 font-medium">
+                <p className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                  <span>Cross-referencing Sales Intelligence, Inventory velocities, and Financial ledger overheads...</span>
+                </p>
+                <p className="flex items-center gap-2 text-stone-500 text-[11px]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  <span>Synthesizing inter-agent consensus and quantitative breakdown...</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input Box Bar */}
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <input
-          type="text"
-          value={inputQuery}
-          onChange={(e) => setInputQuery(e.target.value)}
-          placeholder={
-            selectedBoss === 'all'
-              ? "Ask the Executive Roundtable (e.g. 'Arthur, why did sales drop this month?')..."
-              : `Ask ${currentTargetBoss?.bossName || 'Boss'} (${currentTargetBoss?.bossTitle || ''}) directly...`
-          }
-          className="flex-1 bg-white border border-[#e6e4df] focus:border-amber-600 rounded-xl px-4 py-3 text-xs text-stone-900 placeholder-stone-400 focus:outline-none shadow-xs font-medium"
-        />
-        <button
-          type="submit"
-          className="px-6 py-3 rounded-xl bg-[#d97757] hover:bg-[#c25e3f] text-white font-bold text-xs flex items-center gap-2 transition shadow-xs"
-        >
-          <span>Send to Boardroom</span>
-          <Send className="h-3.5 w-3.5" />
-        </button>
+      <form onSubmit={handleSubmit} className="space-y-2">
+        {activeAgentSwitch && (
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 font-mono">
+            <div className="flex items-center gap-2">
+              <span>{selectedAgentMeta?.avatar}</span>
+              <span>Talking directly with: <strong>{selectedAgentMeta?.name}</strong></span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveAgentSwitch(null)}
+              className="text-amber-800 hover:text-amber-950 font-bold underline"
+            >
+              Reset to Full Swarm
+            </button>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={inputQuery}
+            disabled={isLoading || isListening}
+            onChange={(e) => setInputQuery(e.target.value)}
+            placeholder={
+              isListening
+                ? "🎙️ Listening... (Speak in Hinglish, Hindi, or English)"
+                : isLoading 
+                ? "Live multi-agent discussion in progress..." 
+                : storeMode === 'vyapar'
+                ? "Rajesh Bhai says (e.g. 'Aaj shop ka status batao', 'Low-stock item order kar do')..."
+                : activeAgentSwitch 
+                ? `Ask ${selectedAgentMeta?.name} (e.g. 'Audit this expense line', 'Predict stockout dates')...`
+                : "Ask your Virtual Management Team (e.g. 'What is my net profit?', 'How can we cut overheads?')..."
+            }
+            className={`flex-1 bg-white border rounded-xl px-4 py-3 text-xs text-stone-900 placeholder-stone-400 focus:outline-none shadow-xs font-medium disabled:opacity-60 transition ${
+              isListening ? 'border-amber-500 ring-2 ring-amber-400/40 bg-amber-50/20' : 'border-[#e6e4df] focus:border-amber-600'
+            }`}
+          />
+          <button
+            type="button"
+            onClick={startListening}
+            title="Talk in Hinglish / Hindi / English (Voice to Text)"
+            className={`px-3.5 py-3 rounded-xl border flex items-center justify-center transition shadow-xs ${
+              isListening
+                ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-[#e6e4df]'
+            }`}
+          >
+            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-amber-700" />}
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading || isListening}
+            className="px-6 py-3 rounded-xl bg-[#d97757] hover:bg-[#c25e3f] text-white font-bold text-xs flex items-center gap-2 transition shadow-xs disabled:opacity-60"
+          >
+            <span>{isLoading ? 'Debating...' : 'Submit'}</span>
+            <Send className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </form>
     </div>
   );
 };
+
+

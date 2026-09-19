@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   Activity, 
   Building2, 
   ChevronRight, 
   ShieldCheck, 
-  Sparkles
+  Sparkles,
+  LogOut,
+  User,
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import { AgentMetadata } from '../../lib/types';
 
@@ -16,6 +20,10 @@ interface NavbarProps {
   isLiveSimulating: boolean;
   setIsLiveSimulating: React.Dispatch<React.SetStateAction<boolean>>;
   healthScore: number;
+  storeMode?: 'vyapar' | 'apex';
+  onToggleStoreMode?: (mode: 'vyapar' | 'apex') => void;
+  onSignOut?: () => void;
+  onShowToast?: (msg: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -24,20 +32,39 @@ export const Navbar: React.FC<NavbarProps> = ({
   agents,
   isLiveSimulating,
   setIsLiveSimulating,
-  healthScore
+  healthScore,
+  storeMode = 'vyapar',
+  onToggleStoreMode,
+  onSignOut,
+  onShowToast
 }) => {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
   const tabTitles: Record<string, string> = {
-    executive: 'Executive COO Workspace',
-    sales: 'Sales Intelligence & Revenue Analytics',
-    inventory: 'Supply Chain & Inventory Operations',
-    finance: 'Finance & Liquidity Control',
-    customer: 'Customer Experience & Sentiment NLP',
-    market: 'Market Intelligence & External Signals',
-    chat: 'Multi-Agent Q&A Console',
+    executive: storeMode === 'vyapar' ? 'Vyapar AI Shop Overview' : 'Executive COO Workspace',
+    sales: storeMode === 'vyapar' ? 'Sales & Fast-Moving Items' : 'Sales Intelligence & Revenue Analytics',
+    inventory: storeMode === 'vyapar' ? 'Inventory & Stockout Predictor' : 'Supply Chain & Inventory Operations',
+    finance: storeMode === 'vyapar' ? 'Receivables & Udhar Khata' : 'Finance & Liquidity Control',
+    customer: storeMode === 'vyapar' ? 'Customer Relations & WhatsApp' : 'Customer Experience & Sentiment NLP',
+    market: storeMode === 'vyapar' ? 'Local Supplier Market Quotes' : 'Market Intelligence & External Signals',
+    chat: storeMode === 'vyapar' ? 'Talk to Vyapar AI' : 'Multi-Agent Q&A Console',
     integrations: 'Data Ingestion & Event Simulator'
   };
 
-  React.useEffect(() => {
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Global Command+K shortcut
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
@@ -50,14 +77,44 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-30 bg-[#faf9f6]/90 border-b border-[#e6e4df] backdrop-blur-xl px-4 lg:px-6 py-2.5 flex items-center justify-between gap-4">
-      {/* Breadcrumb Navigation */}
+      {/* Breadcrumb & Enterprise Switcher Navigation */}
       <div className="flex items-center gap-2 text-xs font-mono">
-        <div className="flex items-center gap-1 text-stone-600">
-          <Building2 className="h-3.5 w-3.5 text-amber-700" />
-          <span className="font-bold text-stone-800">Apex Retail Co.</span>
+        <div className="flex items-center bg-[#f3f2ec] rounded-xl p-1 border border-[#e5e3dc]">
+          <button 
+            type="button"
+            onClick={() => {
+              if (onToggleStoreMode) onToggleStoreMode('vyapar');
+              if (onShowToast) onShowToast('Switched to Vyapar AI (Rajesh Hardware - Thane West)');
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              storeMode === 'vyapar' 
+                ? 'bg-amber-500 text-stone-950 font-black shadow-xs' 
+                : 'text-stone-600 hover:text-stone-950'
+            }`}
+          >
+            <span>व्य</span>
+            <span>Vyapar AI (Thane)</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => {
+              if (onToggleStoreMode) onToggleStoreMode('apex');
+              if (onShowToast) onShowToast('Switched to Apex Mumbai Retail Pvt. Ltd.');
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              storeMode === 'apex' 
+                ? 'bg-stone-900 text-white font-black shadow-xs' 
+                : 'text-stone-600 hover:text-stone-950'
+            }`}
+          >
+            <Building2 className="h-3 w-3" />
+            <span>Apex Retail</span>
+          </button>
         </div>
-        <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
-        <span className="font-bold text-stone-900 font-sans text-xs">
+
+        <ChevronRight className="h-3.5 w-3.5 text-stone-400 hidden sm:inline" />
+        <span className="font-bold text-stone-900 font-sans text-xs hidden sm:inline">
           {tabTitles[activeTab] || 'Management Console'}
         </span>
       </div>
@@ -76,22 +133,91 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Live Simulation Pulse */}
         <button
-          onClick={() => setIsLiveSimulating(!isLiveSimulating)}
+          onClick={() => {
+            const nextState = !isLiveSimulating;
+            setIsLiveSimulating(nextState);
+            if (onShowToast) {
+              onShowToast(nextState ? 'Live data streaming resumed.' : 'Live simulation feed paused.');
+            }
+          }}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
             isLiveSimulating
               ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20 hover:bg-emerald-500/20'
               : 'bg-[#f3f2ec] text-stone-600 border-[#e5e3dc]'
           }`}
+          title={isLiveSimulating ? 'Click to pause simulation feed' : 'Click to resume live stream'}
         >
           <Activity className={`h-3.5 w-3.5 ${isLiveSimulating ? 'animate-pulse text-emerald-700' : ''}`} />
           <span className="hidden sm:inline text-[11px] font-bold">{isLiveSimulating ? 'Live Feed Active' : 'Feed Paused'}</span>
         </button>
 
-        {/* Executive Profile Avatar */}
-        <div className="flex items-center gap-2 pl-2 border-l border-[#e6e4df]">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-amber-600 to-orange-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
-            EX
-          </div>
+        {/* Executive Profile Avatar & Dropdown */}
+        <div className="relative pl-2 border-l border-[#e6e4df]" ref={profileRef}>
+          <button
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="flex items-center gap-1.5 p-0.5 rounded-xl hover:ring-2 hover:ring-amber-500/30 transition focus:outline-none"
+            title="Executive Account & Settings"
+          >
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-amber-600 to-orange-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
+              EX
+            </div>
+            <ChevronDown className="h-3.5 w-3.5 text-stone-500" />
+          </button>
+
+          {/* Profile Popover Menu */}
+          {isProfileOpen && (
+            <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-[#e6e4df] shadow-xl p-3 space-y-3 z-50 animate-fadeIn">
+              <div className="flex items-center gap-3 pb-3 border-b border-[#e6e4df]">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-amber-600 to-orange-600 flex items-center justify-center text-white font-bold text-xs">
+                  EX
+                </div>
+                <div className="overflow-hidden">
+                  <h4 className="text-xs font-extrabold text-stone-900 truncate">Executive Console</h4>
+                  <p className="text-[11px] text-stone-500 font-mono truncate">demo@mumbairetail.com</p>
+                </div>
+              </div>
+
+              <div className="space-y-1 text-xs">
+                <div className="p-2 rounded-xl bg-[#faf9f6] border border-[#e6e4df] flex items-center justify-between text-[11px]">
+                  <span className="text-stone-600 font-medium">Active Workspace</span>
+                  <span className="font-bold text-amber-900 font-mono">Apex Mumbai Retail</span>
+                </div>
+                <div className="p-2 rounded-xl bg-[#faf9f6] border border-[#e6e4df] flex items-center justify-between text-[11px]">
+                  <span className="text-stone-600 font-medium">Role Privilege</span>
+                  <span className="font-bold text-emerald-800 font-mono">COO / Full Access</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[#e6e4df] space-y-1">
+                <button
+                  onClick={() => {
+                    setActiveTab('integrations');
+                    setIsProfileOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-stone-700 hover:bg-[#f3f2ec] hover:text-stone-900 transition flex items-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4 text-amber-700" />
+                  <span>Data Ingestion & Events</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    if (onSignOut) {
+                      onSignOut();
+                    } else {
+                      localStorage.removeItem('token');
+                      document.cookie = 'token=; path=/; max-age=0';
+                      window.location.href = '/login';
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-rose-700 hover:bg-rose-50 transition flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4 text-rose-600" />
+                  <span>Sign Out of Console</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

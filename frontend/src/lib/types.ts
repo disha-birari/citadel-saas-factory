@@ -4,7 +4,10 @@ export type AgentId =
   | 'finance' 
   | 'customer' 
   | 'market' 
-  | 'orchestrator';
+  | 'orchestrator'
+  | 'procurement'
+  | 'crm'
+  | 'employee';
 
 export interface AgentMetadata {
   id: AgentId;
@@ -132,6 +135,7 @@ export interface ChatMessage {
   id: string;
   sender: 'user' | 'system' | 'coo';
   queryText?: string;
+  fileName?: string;
   reasoningSteps?: MultiAgentReasoningStep[];
   finalAnswer?: string;
   participatingAgents?: AgentId[];
@@ -185,4 +189,71 @@ export interface Order {
   status: string;
   created_at: string;
 }
+
+// ==========================================
+// VYAPAR AI EXTENSION TYPES
+// ==========================================
+
+export type LanguageMode = 'hinglish' | 'hindi' | 'marathi' | 'english';
+
+export interface SupplierComparisonQuote {
+  id: string;
+  name: string;
+  location: string;
+  quotedPrice: number;
+  deliveryTime: string;
+  reliabilityScore: number;
+  isBestOption: boolean;
+  potentialSaving: number;
+}
+
+export interface CustomerKhataDebtor {
+  id: string;
+  name: string;
+  contactPerson: string;
+  phone: string;
+  amount: number;
+  daysOverdue: number;
+  recoveryProbability: number;
+  behavioralInsight: string;
+  whatsappMessage: string;
+  status: 'pending' | 'reminder_sent' | 'paid';
+}
+
+export interface ShelfSpaceMarginMetric {
+  category: string;
+  profitMarginPct: number;
+  shelfSpacePct: number;
+  monthlyTurnover: number;
+  verdict: string;
+  badgeColor: string;
+}
+
+export interface VyaparBriefingData {
+  enterpriseName: string;
+  owner: string;
+  yesterdaySales: number;
+  yesterdayProfit: number;
+  outstandingPayments: number;
+  expectedTodayMin: number;
+  expectedTodayMax: number;
+  alerts: {
+    id: string;
+    type: 'inventory' | 'finance' | 'sales';
+    message: string;
+    severity: 'critical' | 'warning' | 'info';
+  }[];
+}
+
+export interface ProactiveAlertItem {
+  id: string;
+  title: string;
+  item: string;
+  metricChange: string;
+  daysLeft: number;
+  recommendedOrder: string;
+  atRiskRevenue: number;
+  description: string;
+}
+
 
